@@ -1,36 +1,35 @@
 // ===============================
-// CAST COST MODULE
+// CAST COST MODULE (v13 SAFE)
+// ===============================
+
+console.log("Cast Cost module loaded");
+
+// ===============================
+// TOOLBAR BUTTON (SCENE CONTROLS)
 // ===============================
 
 Hooks.on("getSceneControlButtons", (controls) => {
   if (!game.user.isGM) return;
 
-  controls.push({
+  const group = controls.find(c => c.name === "token") || controls[0];
+
+  group.tools.push({
     name: "cast-cost",
     title: "Cast Cost",
     icon: "fas fa-coins",
-    layer: "controls",
-    tools: [
-      {
-        name: "generate-cast-cost",
-        title: "Generate Cast Cost Report",
-        icon: "fas fa-file-alt",
-        onClick: () => openActorSelector(),
-        button: true
-      }
-    ]
+    onClick: () => openActorSelector(),
+    button: true
   });
 });
 
 // ===============================
-// ACTOR SELECTOR
+// ACTOR SELECTOR POPUP
 // ===============================
 
 async function openActorSelector() {
   const actors = game.actors.filter(a => {
     if (a.type !== "character") return false;
 
-    // Only actors owned by NON-GM users
     const owners = game.users.filter(u =>
       !u.isGM && a.testUserPermission(u, "OWNER")
     );
@@ -61,7 +60,7 @@ async function openActorSelector() {
   content += `</div></form>`;
 
   new Dialog({
-    title: "Select Characters",
+    title: "Cast Cost - Select Characters",
     content,
     buttons: {
       generate: {
@@ -75,8 +74,8 @@ async function openActorSelector() {
             return ui.notifications.warn("No characters selected.");
           }
 
-          const selectedActors = selectedIds.map(id => game.actors.get(id));
-          const report = generateReport(selectedActors);
+          const actors = selectedIds.map(id => game.actors.get(id));
+          const report = generateReport(actors);
           await createJournal(report);
         }
       },
@@ -88,7 +87,7 @@ async function openActorSelector() {
 }
 
 // ===============================
-// SPELL SCANNER
+// SPELL COST DETECTION
 // ===============================
 
 function extractCost(materialText) {
@@ -98,7 +97,7 @@ function extractCost(materialText) {
   if (!match) return null;
 
   return {
-    cost: parseInt(match[1]),
+    cost: Number(match[1]),
     text: materialText
   };
 }
@@ -113,26 +112,26 @@ function generateReport(actors) {
   for (let actor of actors) {
     const spells = actor.items.filter(i => i.type === "spell");
 
-    let validSpells = [];
+    let valid = [];
 
     for (let spell of spells) {
       const material = spell.system.components?.materials?.value;
-      const costData = extractCost(material);
+      const cost = extractCost(material);
 
-      if (costData) {
-        validSpells.push({
+      if (cost) {
+        valid.push({
           name: spell.name,
-          cost: costData.cost,
-          material: costData.text
+          cost: cost.cost,
+          material: cost.text
         });
       }
     }
 
-    if (!validSpells.length) continue;
+    if (!valid.length) continue;
 
     content += `<h2>${actor.name}</h2><ul>`;
 
-    for (let s of validSpells) {
+    for (let s of valid) {
       content += `<li><strong>${s.name}</strong> — ${s.cost} gp (${s.material})</li>`;
     }
 
@@ -149,13 +148,13 @@ function generateReport(actors) {
 async function createJournal(content) {
   const date = new Date().toISOString().split("T")[0];
 
-  let baseName = `Cast Cost – ${date}`;
-  let name = baseName;
-  let counter = 1;
+  let base = `Cast Cost – ${date}`;
+  let name = base;
+  let i = 1;
 
   while (game.journal.some(j => j.name === name)) {
-    name = `${baseName} (${String(counter).padStart(3, "0")})`;
-    counter++;
+    name = `${base} (${String(i).padStart(3, "0")})`;
+    i++;
   }
 
   await JournalEntry.create({
@@ -169,5 +168,5 @@ async function createJournal(content) {
     ]
   });
 
-  ui.notifications.info(`Cast Cost journal created: ${name}`);
+  ui.notifications.info(`Journal created: ${name}`);
 }
