@@ -1,0 +1,13 @@
+{
+  "id": "cast-cost",
+  "title": "Cast Cost",
+  "description": "GM tool that scans player characters and generates a journal of spells with gold-cost material components.",
+  "version": "1.0.0",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "13"
+  },
+  "esmodules": [
+    "scripts/main.js"
+  ]
+}
